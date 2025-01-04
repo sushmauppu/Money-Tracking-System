@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money Tracking System</title>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+        }
+        #balance-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #transaction-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        #transaction-form input,
+        #transaction-form select,
+        #transaction-form button {
+            padding: 10px;
+            font-size: 16px;
+        }
+        #transactions-section {
+            margin-bottom: 20px;
+        }
+        #transactions-list {
+            list-style: none;
+            padding: 0;
+        }
+        #transactions-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #fff;
+            margin-bottom: 5px;
+            border-left: 5px solid;
+        }
+        #transactions-list li.income {
+            border-color: green;
+        }
+        #transactions-list li.expense {
+            border-color: red;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Money Tracking System</h1>
+        </header>
+
+        <!-- Balance Section -->
+        <section id="balance-section">
+            <h2>Balance: <span id="balance">$0.00</span></h2>
+        </section>
+
+        <!-- Add Transaction Form -->
+        <section id="form-section">
+            <form id="transaction-form">
+                <input type="text" id="description" placeholder="Description" required>
+                <input type="number" id="amount" placeholder="Amount" required>
+                <select id="type">
+                    <option value="Income">Income</option>
+                    <option value="Expense">Expense</option>
+                </select>
+                <button type="submit">Add Transaction</button>
+            </form>
+        </section>
+
+        <!-- Search Transactions -->
+        <section id="search-section">
+            <input type="text" id="search" placeholder="Search Transactions" />
+        </section>
+
+        <!-- Transactions Section -->
+        <section id="transactions-section">
+            <h2>Transactions</h2>
+            <ul id="transactions-list"></ul>
+        </section>
+
+        <!-- Charts Section -->
+        <section id="charts-section">
+            <h2>Expense Breakdown</h2>
+            <canvas id="expenseChart"></canvas>
+            <h2>Monthly Trends</h2>
+            <canvas id="monthlyChart"></canvas>
+        </section>
+        <!-- Budget Section -->
+        <section id="budget-section">
+            <h2>Set Budget</h2>
+            <form id="budget-form">
+                <input type="text" id="budget-category" placeholder="Category" required>
+                <input type="number" id="budget-amount" placeholder="Budget Amount" required>
+                <button type="submit">Set Budget</button>
+            </form>
+            <ul id="budget-list"></ul>
+        </section>
+        <button onclick="window.location.href='/generate_report'">Download Report</button>
+
+
+    </div>
+
+    <script>
+        // DOM Elements
+        const balanceElement = document.getElementById('balance');
+        const transactionsList = document.getElementById('transactions-list');
+        const transactionForm = document.getElementById('transaction-form');
+        const descriptionInput = document.getElementById('description');
+        const amountInput = document.getElementById('amount');
+        const typeSelect = document.getElementById('type');
+        const searchInput = document.getElementById('search');
+
+        let transactions = [];
+
+        // Update Balance
+        function updateBalance() {
+            const totalBalance = transactions.reduce((total, transaction) => {
+                return transaction.type === 'Income' ? total + transaction.amount : total - transaction.amount;
+            }, 0);
+            balanceElement.textContent = `$${totalBalance.toFixed(2)}`;
+        }
+
+        // Add Transaction to List
+        function addTransactionToList(transaction) {
+            const li = document.createElement('li');
+            li.classList.add(transaction.type.toLowerCase());
+            li.innerHTML = `
+                ${transaction.description} - $${transaction.amount.toFixed(2)}
+                <button onclick="removeTransaction(${transaction.id})">X</button>
+            `;
+            transactionsList.appendChild(li);
+        }
+
+        // Remove Transaction
+        function removeTransaction(id) {
+            transactions = transactions.filter(transaction => transaction.id !== id);
+            renderTransactions();
+            saveToLocalStorage();
+        }
+
+        // Render Transactions
+        function renderTransactions() {
+            transactionsList.innerHTML = '';
+            transactions.forEach(addTransactionToList);
+            updateBalance();
+            generateExpenseChart();
+            generateMonthlyChart();
+            checkBudgetAlerts(); // Check budget after each transaction update
+        }
+
+        // Save Transactions to Local Storage
+        function saveToLocalStorage() {
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+        }
+
+        // Load Transactions from Local Storage
+        function loadFromLocalStorage() {
+            const savedTransactions = localStorage.getItem('transactions');
+            if (savedTransactions) {
+                transactions = JSON.parse(savedTransactions);
+            }
+        }
+
+        // Filter Transactions
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const filteredTransactions = transactions.filter(transaction =>
+                transaction.description.toLowerCase().includes(query)
+            );
+
+            transactionsList.innerHTML = '';
+            filteredTransactions.forEach(addTransactionToList);
+        });
+
+        // Generate Expense Chart
+        function generateExpenseChart() {
+            const expenseData = transactions
+                .filter(t => t.type === 'Expense')
+                .reduce((acc, transaction) => {
+                    if (!acc[transaction.description]) acc[transaction.description] = 0;
+                    acc[transaction.description] += transaction.amount;
+                    return acc;
+                }, {});
+
+            const labels = Object.keys(expenseData);
+            const data = Object.values(expenseData);
+
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            if (window.expenseChartInstance) window.expenseChartInstance.destroy(); // Prevent duplicates
+            window.expenseChartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Expenses by Category',
+                        data: data,
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+                    }]
+                }
+            });
+        }
+
+        // Add Transaction
+        transactionForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const description = descriptionInput.value.trim();
+            const amount = parseFloat(amountInput.value);
+            const type = typeSelect.value;
+
+            if (!description || isNaN(amount) || amount <= 0) {
+                alert('Please enter valid transaction details.');
+                return;
+            }
+
+            const transaction = {
+                id: Date.now(),
+                description,
+                amount,
+                type,
+            };
+
+            transactions.push(transaction);
+            renderTransactions();
+            saveToLocalStorage();
+
+            // Clear form inputs
+            descriptionInput.value = '';
+            amountInput.value = '';
+            typeSelect.value = 'Income';
+        });
+
+        // Load Transactions on Page Load
+        window.onload = () => {
+            loadFromLocalStorage();
+            loadBudgetsFromLocalStorage();
+            renderTransactions();
+            renderBudgets();
+        };
+
+        let budgets = [];
+
+        function renderBudgets() {
+            const budgetList = document.getElementById('budget-list');
+            budgetList.innerHTML = '';
+            budgets.forEach(budget => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    ${budget.category} - $${budget.amount.toFixed(2)}
+                    <button onclick="removeBudget('${budget.category}')">X</button>
+                `;
+                budgetList.appendChild(li);
+            });
+        }
+
+        function removeBudget(category) {
+            budgets = budgets.filter(budget => budget.category !== category);
+            saveBudgetsToLocalStorage();
+            renderBudgets();
+        }
+        function checkBudgetAlerts() {
+            const expenseData = transactions
+                .filter(t => t.type === 'Expense')
+                .reduce((acc, transaction) => {
+                    if (!acc[transaction.description]) acc[transaction.description] = 0;
+                    acc[transaction.description] += transaction.amount;
+                    return acc;
+                }, {});
+
+            budgets.forEach(budget => {
+                if (expenseData[budget.category] > budget.amount) {
+                    alert(`You have exceeded your budget for ${budget.category}!`);
+                }
+            });
+        }
+        document.getElementById('budget-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const category = document.getElementById('budget-category').value.trim();
+            const amount = parseFloat(document.getElementById('budget-amount').value);
+
+            if (!category || isNaN(amount) || amount <= 0) {
+                alert('Please enter valid budget details.');
+                return;
+            }
+
+            budgets.push({ category, amount });
+            saveBudgetsToLocalStorage();
+            renderBudgets();
+
+            // Clear form inputs
+            document.getElementById('budget-category').value = '';
+            document.getElementById('budget-amount').value = '';
+        });
+        function saveBudgetsToLocalStorage() {
+            localStorage.setItem('budgets', JSON.stringify(budgets));
+        }
+
+        function loadBudgetsFromLocalStorage() {
+            const savedBudgets = localStorage.getItem('budgets');
+            if (savedBudgets) {
+                budgets = JSON.parse(savedBudgets);
+            }
+        }
+        function getMonthlyTrends() {
+            const trends = transactions.reduce((acc, transaction) => {
+                const date = new Date(transaction.id);
+                const month = `${date.getFullYear()}-${date.getMonth() + 1}`;
+                if (!acc[month]) acc[month] = { income: 0, expense: 0 };
+
+                if (transaction.type === 'Income') {
+                    acc[month].income += transaction.amount;
+                } else {
+                    acc[month].expense += transaction.amount;
+                }
+
+                return acc;
+            }, {});
+
+            const labels = Object.keys(trends);
+            const incomeData = labels.map(month => trends[month].income);
+            const expenseData = labels.map(month => trends[month].expense);
+
+            return { labels, incomeData, expenseData };
+        }
+        function generateMonthlyChart() {
+            const { labels, incomeData, expenseData } = getMonthlyTrends();
+
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            if (window.monthlyChartInstance) window.monthlyChartInstance.destroy(); // Prevent duplicates
+            window.monthlyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Income',
+                            data: incomeData,
+                            borderColor: 'green',
+                            fill: false,
+                        },
+                        {
+                            label: 'Expense',
+                            data: expenseData,
+                            borderColor: 'red',
+                            fill: false,
+                        },
+                    ]
+                }
+            });
+        }
+        document.getElementById('transaction-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const date = document.getElementById('date').value;
+            const description = document.getElementById('description').value;
+            const amount = document.getElementById('amount').value;
+            const type = document.getElementById('type').value;
+
+            const response = await fetch('/add_transaction', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date, description, amount, type }),
+            });
+            const result = await response.json();
+            alert(result.message);
+        });
+
+        async function loadTransactions() {
+            const response = await fetch('/get_transactions');
+            const transactions = await response.json();
+            const list = document.getElementById('transactions-list');
+            list.innerHTML = '';
+            transactions.forEach(transaction => {
+                const li = document.createElement('li');
+                li.textContent = `${transaction.Date} - ${transaction.Description} - $${transaction.Amount} (${transaction.Type})`;
+                list.appendChild(li);
+            });
+        }
+
+        window.onload = loadTransactions;
+    </script>
+</body>
+</html>
+
