@@ -24,8 +24,8 @@ The **Money Tracking System** is a web application designed to simplify personal
 
 ### Installation & Setup 🚀
 
-1. **Clone the Repository**  
-   git clone https://github.com/yourusername/money-tracking-system.git
+1. **Download the Repository**  
+   extract zip file.
 
 2. **Navigate to the Project Directory**
    cd money-tracking-system
