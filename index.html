@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paisa - Money Management App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background-color: black
+        }
+
+        .app {
+            max-width: 420px;
+            margin: 0 auto;
+            background-color: aliceblue;
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 80px;
+        }
+
+        .page {
+            justify-content: space-between;
+            align-items: center;
+            text-align: center;
+            display: none;
+            padding: 20px;
+        }
+        #profile{
+            justify-items: center;
+        }
+        .page.active {
+            display: block;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: #e0e0e0;
+            border-radius: 50%;
+        }
+
+        .balance-card {
+            background: linear-gradient(135deg, #4f46e5, #f43f5e);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .balance-amount {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .pending {
+            color: white;
+            font-size: 14px;
+        }
+
+        .recent-earnings {
+            overflow-y: auto;
+            overflow-x: hidden;
+            max-height: 150px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .earning-item {
+            font-size: 13px;
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .earning-item .platform {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .earning-item .amount {
+            font-size: 12px;
+            font-weight: bold;
+            color: #10b981;
+        }
+
+        .withdrawal-list {
+            overflow-y: auto;
+            overflow-x: hidden;
+            max-height: 150px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .withdrawal-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .withdrawal-item .amount {
+            font-weight: bold;
+            color: #f43f5e;
+        }
+
+        .inputBx {
+            justify-items: center;
+            position: relative;
+            display: grid;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .inputBx input,.inputBx select{
+            position: relative;
+            display: grid;
+            width: 175px;
+            padding: 12px 20px;
+            background: transparent;
+            border: 2px solid none;
+            border-radius: 40px;
+            font-size: 10px;
+            color: #333;
+            box-shadow: none;
+            outline: none;
+        }
+        .inputBx select{
+            width: 130px;
+            border: 1px solid black;
+        }
+
+        .inputBx input[type="submit"]{
+            width: 100%;
+            background: linear-gradient(45deg, #ff357a, #fff172);
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .inputBx input::placeholder{
+            color: rgba(51, 51, 51, 0.5);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+        }
+
+        .stat-card.earnings {
+            background: linear-gradient(135deg, #4f46e5, #8b5cf6);
+        }
+
+        .stat-card.withdrawals {
+            background: linear-gradient(135deg, #ec4899, #f43f5e);
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 420px;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 15px;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-item {
+            text-align: center;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .nav-item.active {
+            color: #4f46e5;
+        }
+
+        .transaction-history {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .positive {
+            color: #10b981;
+        }
+
+        .negative {
+            color: #f43f5e;
+        }
+
+        .generate-report-btn {
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            max-width: 200px;
+            justify-content: center;
+        }
+
+        .generate-report-btn:hover {
+            background: #059669;
+        }
+
+        .generate-report-btn i {
+            font-size: 16px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            color: #666;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-item.active {
+            color: #4f46e5;
+            background: #f5f3ff;
+        }
+
+        .nav-item i {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .nav-label {
+            font-size: 12px;
+            text-align: center;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Home Page -->
+        <div class="page active" id="home">
+            <div class="header">
+                <div class="avatar"></div>
+                <h1 style="font-size: 18px;" id="welcome-message">Welcome</h1>
+            </div>
+
+            <div class="balance-card">
+                <div>My Balance</div>
+                <div class="balance-amount" id="balance">₹0.00</div>
+            </div>
+            <form id="transaction-form">
+                <h2 style="font-size: 19px; font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;">Enter Transaction Details : </h2>
+                <div class="recent-earnings">
+                    <div class="inputBx">
+                        <input type="text" id="description" placeholder="Description" required>
+                    </div>
+                    <div class="inputBx">
+                        <input type="number" id="amount" placeholder="Amount" required>
+                    </div>
+                </div>
+                <div class="recent-earnings">
+                    <div class="inputBx">
+                        <select id="type">
+                            <option value="Income">Income</option>
+                            <option value="Expense">Expense</option>
+                        </select>
+                    </div>
+                    <div class="inputBx">
+                        <input type="submit" value="Add Transaction">
+                    </div>
+                </div>
+            </form>
+            <h3 class="section-title">Recent Earnings</h3>
+            <div class="recent-earnings" id="recent-earnings">
+                <!-- Recent Income Transactions will be added here dynamically -->
+            </div>
+
+            <h3 class="section-title">Recent Withdrawals</h3>
+            <div class="withdrawal-list" id="recent-withdrawals">
+                <!-- Recent Expense Transactions will be added here dynamically -->
+            </div>
+        </div>
+
+        <!-- Dashboard Page -->
+        <div class="page" id="dashboard">
+            <div class="stats-grid" id="stats-grid">
+                <!-- Monthly Earnings and Withdrawals will be added here dynamically -->
+            </div>
+            <h3 class="section-title">Transaction History</h3>
+            <div class="transaction-history" id="transactions-history-list">
+                <!-- All Transactions will be added dynamically here -->
+            </div>
+        </div>
+
+        <!-- Profile Page -->
+        <div class="page" id="profile">
+            <h2 class="section-title">Edit Profile</h2>
+            <br>
+            <div class="profile-form">
+                <div class="inputBx">
+                    <input type="text" id="name-input" placeholder="Enter your name" />
+                </div>
+                <button id="update-name">Save Changes</button>
+            </div>
+            <div style="display: inline-flex; width: 350px; gap:25px; padding: 10%; align-items: center;">
+                <button class="generate-report-btn" onclick="generateReport()">Generate Report</button>
+                <button id="clear-storage" class="generate-report-btn" style="background-color: #f43f5e;">Clear Local Storage</button>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <div class="nav-item active" onclick="switchPage('home')">
+                <i class="fas fa-home"></i>
+                <span class="nav-label">Home</span>
+            </div>
+            <div class="nav-item" onclick="switchPage('dashboard')">
+                <i class="fas fa-chart-line"></i>
+                <span class="nav-label">History</span>
+            </div>
+            <div class="nav-item" onclick="switchPage('profile')">
+                <i class="fas fa-user"></i>
+                <span class="nav-label">Profile</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const balanceElement = document.getElementById('balance');
+        const recentEarnings = document.getElementById('recent-earnings');
+        const recentWithdrawals = document.getElementById('recent-withdrawals');
+        const transactionsHistoryList = document.getElementById('transactions-history-list');
+        const statsGrid = document.getElementById('stats-grid');
+        const transactionForm = document.getElementById('transaction-form');
+        const descriptionInput = document.getElementById('description');
+        const amountInput = document.getElementById('amount');
+        const typeSelect = document.getElementById('type');
+
+        let transactions = [];
+
+        // Update Balance
+        function updateBalance() {
+            const totalBalance = transactions.reduce((total, transaction) => {
+                return transaction.type === 'Income' ? total + transaction.amount : total - transaction.amount;
+            }, 0);
+            balanceElement.textContent = `₹${totalBalance.toFixed(2)}`;
+        }
+
+        // Save Transactions to Local Storage
+        function saveToLocalStorage() {
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+        }
+
+        // Load Transactions from Local Storage
+        function loadFromLocalStorage() {
+            const storedTransactions = localStorage.getItem('transactions');
+            if (storedTransactions) {
+                transactions = JSON.parse(storedTransactions);
+                transactions.forEach(addTransaction);
+                updateBalance();
+                updateStats();
+            }
+        }
+
+        // Update Stats
+        function updateStats() {
+            const totalEarnings = transactions
+                .filter(transaction => transaction.type === 'Income')
+                .reduce((sum, transaction) => sum + transaction.amount, 0);
+            const totalWithdrawals = transactions
+                .filter(transaction => transaction.type === 'Expense')
+                .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+            statsGrid.innerHTML = `
+                <div class="stat-card earnings">
+                    <h3>Monthly Earnings</h3>
+                    <div class="balance-amount">₹${totalEarnings.toFixed(2)}</div>
+                </div>
+                <div class="stat-card withdrawals">
+                    <h3>Monthly Withdrawals</h3>
+                    <div class="balance-amount">₹${totalWithdrawals.toFixed(2)}</div>
+                </div>
+            `;
+        }
+
+        // Add Transaction to Recent and Dashboard
+        function addTransaction(transaction) {
+            // Add to Recent Earnings or Withdrawals
+            const div = document.createElement('div');
+            div.classList.add(transaction.type === 'Income' ? 'earning-item' : 'withdrawal-item');
+            div.innerHTML = `
+                <div class="bank-info">
+                    <div class="bank-name">${transaction.description}</div>
+                    <div class="date">${new Date(transaction.id).toLocaleDateString()}</div>
+                </div>
+                <div class="amount">${transaction.type === 'Income' ? '+' : '-'}₹${transaction.amount.toFixed(2)}</div>
+            `;
+
+            if (transaction.type === 'Income') {
+                recentEarnings.prepend(div);
+                if (recentEarnings.children.length > 5) recentEarnings.removeChild(recentEarnings.lastChild);
+            } else {
+                recentWithdrawals.prepend(div);
+                if (recentWithdrawals.children.length > 5) recentWithdrawals.removeChild(recentWithdrawals.lastChild);
+            }
+
+            // Add to Dashboard History
+            const li = document.createElement('div');
+            li.classList.add('transaction-item');
+            li.innerHTML = `
+                <div class="bank-info">
+                    <div class="bank-name">${transaction.description}</div>
+                    <div class="date">${new Date(transaction.id).toLocaleDateString()}</div>
+                </div>
+                <div class="amount ${transaction.type === 'Income' ? 'positive' : 'negative'}">
+                    ${transaction.type === 'Income' ? '+' : '-'}₹${transaction.amount.toFixed(2)}
+                </div>
+            `;
+            transactionsHistoryList.prepend(li);
+        }
+
+        // Add Transaction
+        transactionForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const description = descriptionInput.value.trim();
+            const amount = parseFloat(amountInput.value);
+            const type = typeSelect.value;
+
+            if (!description || isNaN(amount) || amount <= 0) {
+                alert('Please enter valid transaction details.');
+                return;
+            }
+
+            const transaction = {
+                id: Date.now(),
+                description,
+                amount,
+                type,
+            };
+
+            transactions.push(transaction);
+            addTransaction(transaction);
+            updateBalance();
+            updateStats();
+            saveToLocalStorage();
+
+            // Clear form inputs
+            descriptionInput.value = '';
+            amountInput.value = '';
+            typeSelect.value = 'Income';
+        });
+
+        // Generate Report as Excel
+        function generateReport() {
+            const worksheet = XLSX.utils.json_to_sheet(transactions);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Transactions");
+            XLSX.writeFile(workbook, "transactions_report.xlsx");
+        }
+
+        // Initialize Transactions
+        window.onload = () => {
+            loadFromLocalStorage();
+        };
+
+        function switchPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId)?.classList.add('active');
+
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`.nav-item[onclick="switchPage('${pageId}')"]`).classList.add('active');
+        }
+        document.getElementById('update-name').addEventListener('click', () => {
+            const nameInput = document.getElementById('name-input').value.trim();
+            const welcomeMessage = document.getElementById('welcome-message');
+            if (nameInput) {
+                welcomeMessage.textContent = `Welcome ${nameInput}`;
+            } else {
+                welcomeMessage.textContent = 'Welcome';
+            }
+        });
+        document.getElementById('clear-storage').addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear all saved data? This action cannot be undone.')) {
+                localStorage.clear();
+                alert('Local storage cleared successfully.');
+                location.reload(); // Reload to reflect the cleared data
+            }
+        });
+
+    </script>
+</body>
+</html>
